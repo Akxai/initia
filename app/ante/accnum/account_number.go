@@ -22,25 +22,26 @@ func NewAccountNumberDecorator(ak cosmosante.AccountKeeper) AccountNumberDecorat
 }
 
 // AnteHandle is the AnteHandler implementation for AccountNumberDecorator.
+// AccountNumberDecorator.AnteHandle updated to use atomic increment
 func (and AccountNumberDecorator) AnteHandle(ctx sdk.Context, tx sdk.Tx, simulate bool, next sdk.AnteHandler) (sdk.Context, error) {
 	if !ctx.IsCheckTx() && !ctx.IsReCheckTx() && !simulate {
 		return next(ctx, tx, simulate)
 	}
 
-	ak := and.ak.(*authkeeper.AccountKeeper)
-
-	gasFreeCtx := ctx.WithGasMeter(storetypes.NewInfiniteGasMeter())
-	num, err := ak.AccountNumber.Peek(gasFreeCtx)
-	if err != nil {
-		return ctx, err
+	// Safely cast to the concrete AccountKeeper type.
+	ak, ok := and.ak.(*authkeeper.AccountKeeper)
+	if !ok {
+		return ctx, sdkerrors.Wrap(sdkerrors.ErrInvalidType, "failed to cast AccountKeeper")
 	}
 
+	gasFreeCtx := ctx.WithGasMeter(storetypes.NewInfiniteGasMeter())
 	accountNumAddition := uint64(1_000_000)
 	if simulate {
 		accountNumAddition += 1_000_000
 	}
 
-	if err := ak.AccountNumber.Set(gasFreeCtx, num+accountNumAddition); err != nil {
+	// Perform an atomic increment of the account number.
+	if err := ak.IncrementAccountNumber(gasFreeCtx, accountNumAddition); err != nil {
 		return ctx, err
 	}
 

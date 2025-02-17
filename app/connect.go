@@ -107,15 +107,15 @@ func setupSlinky(
 		),
 	).WrappedPreBlocker(app.ModuleManager)
 
-	// Create the vote extensions handler that will be used to extend and verify
-	// vote extensions (i.e. oracle data).
 	veCodec := compression.NewCompressionVoteExtensionCodec(
 		compression.NewDefaultVoteExtensionCodec(),
-		compression.NewZLibCompressor(),
+		// Use a ZLib compressor with a maximum decompression output limit (e.g., 1 MB)
+		compression.NewZLibCompressorWithMaxSize(1<<20), // 1 MB limit
 	)
 	extCommitCodec := compression.NewCompressionExtendedCommitCodec(
 		compression.NewDefaultExtendedCommitCodec(),
-		compression.NewZStdCompressor(),
+		// Use a ZStd compressor with a maximum decompression output limit (e.g., 1 MB)
+		compression.NewZStdCompressorWithMaxSize(1<<20), // 1 MB limit
 	)
 
 	// Create the vote extensions handler that will be used to extend and verify
